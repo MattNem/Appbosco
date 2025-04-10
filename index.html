@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="theme-color" content="#22c55e"> <title>Orto e Frutteto PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .screen {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .hidden {
+            display: none;
+            opacity: 0;
+        }
+        .visible {
+            display: block;
+            opacity: 1;
+        }
+        .calendar-day {
+            position: relative;
+            min-height: 60px;
+        }
+        .activity-indicator {
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 2px;
+        }
+        .indicator-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        /* Specific colors for activities (examples) */
+        .bg-semina { background-color: #34D399; } /* Emerald 400 */
+        .bg-raccolta { background-color: #F59E0B; } /* Amber 500 */
+        .bg-trapianto { background-color: #60A5FA; } /* Blue 400 */
+        .bg-trattamento { background-color: #F87171; } /* Red 400 */
+        .bg-irrigazione { background-color: #38BDF8; } /* Sky 400 */
+        .bg-concimazione { background-color: #A3E635; } /* Lime 400 */
+        .bg-nota { background-color: #9CA3AF; } /* Gray 400 */
+        .bg-orto { background-color: #A78BFA; } /* Violet 400 */
+        .bg-frutteto { background-color: #FB923C; } /* Orange 400 */
+
+        .bottom-nav {
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        }
+        /* Style for active nav button */
+        .nav-button.active {
+             color: #16a34a; /* Green 600 */
+             font-weight: 600;
+        }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto max-w-md h-screen flex flex-col shadow-lg bg-white">
+
+        <header class="bg-green-600 text-white p-4 text-center shadow-md">
+            <h1 class="text-xl font-bold">🥬🌰 Orto e Frutteto PWA</h1>
+        </header>
+
+        <main class="flex-grow p-4 overflow-y-auto">
+
+            <div id="screen-home" class="screen visible">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700">Dashboard</h2>
+                <div class="grid grid-cols-1 gap-4">
+                     <button onclick="navigateTo('screen-piante', 'Orto')" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-lg shadow transition duration-150 ease-in-out">
+                        Gestisci Orto 🥕
+                    </button>
+                    <button onclick="navigateTo('screen-piante', 'Frutteto')" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-4 rounded-lg shadow transition duration-150 ease-in-out">
+                        Gestisci Frutteto 🍎
+                    </button>
+                     <button onclick="navigateTo('screen-calendario')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-4 rounded-lg shadow transition duration-150 ease-in-out">
+                        Visualizza Calendario 📅
+                    </button>
+                     <button onclick="navigateTo('screen-aggiungi')" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-4 rounded-lg shadow transition duration-150 ease-in-out">
+                        Aggiungi Attività/Nota 📝
+                    </button>
+                </div>
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 class="font-semibold text-gray-600 mb-2">Attività Recenti</h3>
+                    <ul id="recent-activities-list" class="text-sm text-gray-500 space-y-1">
+                        <li>Nessuna attività recente trovata.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="screen-calendario" class="screen hidden">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700">Calendario Attività</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="p-2 rounded-md hover:bg-gray-200 text-gray-600">&lt;</button>
+                    <span id="calendar-month-year" class="font-semibold text-gray-700">Aprile 2025</span>
+                    <button onclick="changeMonth(1)" class="p-2 rounded-md hover:bg-gray-200 text-gray-600">&gt;</button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500 mb-2">
+                    <div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+                    </div>
+                 <div class="mt-4 text-xs text-gray-500">
+                    <p>Legenda Colori Attività:</p>
+                    <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                        <span class="flex items-center"><span class="indicator-dot bg-semina mr-1"></span>Semina</span>
+                        <span class="flex items-center"><span class="indicator-dot bg-raccolta mr-1"></span>Raccolta</span>
+                        <span class="flex items-center"><span class="indicator-dot bg-trapianto mr-1"></span>Trapianto</span>
+                        <span class="flex items-center"><span class="indicator-dot bg-trattamento mr-1"></span>Trattamento</span>
+                        <span class="flex items-center"><span class="indicator-dot bg-irrigazione mr-1"></span>Irrigazione</span>
+                        <span class="flex items-center"><span class="indicator-dot bg-concimazione mr-1"></span>Concimazione</span>
+                        <span class="flex items-center"><span class="indicator-dot bg-nota mr-1"></span>Nota</span>
+                    </div>
+                     <p class="mt-1">Legenda Colori Sezione:</p>
+                     <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                         <span class="flex items-center"><span class="indicator-dot bg-orto mr-1"></span>Orto</span>
+                        <span class="flex items-center"><span class="indicator-dot bg-frutteto mr-1"></span>Frutteto</span>
+                    </div>
+                </div>
+                 <div id="calendar-message-box" class="hidden mt-4 p-3 bg-blue-100 border border-blue-300 text-blue-800 rounded-lg text-sm space-y-2">
+                    <h4 class="font-semibold">Attività del Giorno:</h4>
+                    <ul id="calendar-day-activities" class="list-disc list-inside text-xs">
+                        <li>Nessuna attività registrata per questo giorno.</li>
+                    </ul>
+                    <button onclick="hideMessageBox('calendar-message-box')" class="text-xs text-blue-600 hover:underline">Chiudi</button>
+                </div>
+            </div>
+
+            <div id="screen-aggiungi" class="screen hidden">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700">Aggiungi Attività / Nota</h2>
+                <form id="activity-form" class="space-y-4">
+                     <div>
+                        <label for="activity-date" class="block text-sm font-medium text-gray-700">Data</label>
+                        <input type="date" id="activity-date" name="activity-date" class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                    </div>
+                    <div>
+                        <label for="activity-type" class="block text-sm font-medium text-gray-700">Tipo Attività</label>
+                        <select id="activity-type" name="activity-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option>Semina</option>
+                            <option>Trapianto</option>
+                            <option>Raccolta</option>
+                            <option>Trattamento</option>
+                            <option>Irrigazione</option>
+                            <option>Concimazione</option>
+                            <option>Nota Generica</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="plant-association" class="block text-sm font-medium text-gray-700">Associa a Pianta (Opzionale)</label>
+                        <select id="plant-association" name="plant-association" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="">Nessuna</option>
+                            <optgroup label="Orto" id="plant-group-orto"></optgroup>
+                             <optgroup label="Frutteto" id="plant-group-frutteto"></optgroup>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="activity-notes" class="block text-sm font-medium text-gray-700">Note</label>
+                        <textarea id="activity-notes" name="activity-notes" rows="4" class="mt-1 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 rounded-md p-2" placeholder="Descrivi l'attività, osservazioni..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Allega Immagini (Non funzionante)</label>
+                        <input type="file" disabled class="block w-full text-sm text-gray-400 bg-gray-100 rounded-md border-gray-300
+                          file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold
+                          file:bg-gray-200 file:text-gray-500">
+                        <p class="mt-1 text-xs text-gray-500">L'upload di immagini richiederebbe storage esterno o API più complesse.</p>
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Registra Nota Vocale (Non funzionante)</label>
+                        <button type="button" disabled class="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-400 cursor-not-allowed">
+                            🎤 Avvia Registrazione
+                        </button>
+                         <p class="mt-1 text-xs text-gray-500">La registrazione vocale richiede API specifiche.</p>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="button" onclick="saveActivity()" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            Salva Attività
+                        </button>
+                    </div>
+                </form>
+                 <div id="save-message-box" class="hidden mt-4 p-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm">
+                    Attività salvata con successo nel browser!
+                </div>
+                 <div id="error-message-box" class="hidden mt-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-lg text-sm">
+                    Si è verificato un errore.
+                </div>
+            </div>
+
+             <div id="screen-piante" class="screen hidden">
+                 <h2 class="text-lg font-semibold mb-4 text-gray-700">Le Mie Piante (<span id="plant-section-title"></span>)</h2>
+                 <div class="mb-4 flex gap-2">
+                     <input type="text" id="new-plant-name" placeholder="Nome nuova pianta" class="flex-grow shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-2">
+                     <button onclick="addPlant()" class="flex-shrink-0 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Aggiungi
+                    </button>
+                 </div>
+
+                 <ul id="plant-list" class="space-y-2">
+                     </ul>
+            </div>
+
+             <div id="screen-impostazioni" class="screen hidden">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700">Impostazioni</h2>
+                 <div class="space-y-4">
+                     <div>
+                        <h3 class="text-md font-medium text-gray-800 mb-2">Dati Locali</h3>
+                         <button onclick="exportData()" class="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 text-sm text-blue-800 mb-2">Esporta Dati (JSON)</button>
+                         <label class="block w-full text-left p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg border border-yellow-200 text-sm text-yellow-800 cursor-pointer">
+                             Importa Dati (JSON)
+                             <input type="file" id="import-file" accept=".json" onchange="importData(event)" class="hidden">
+                         </label>
+                         <button onclick="clearAllData()" class="mt-4 w-full text-left p-3 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 text-sm text-red-800">Cancella Tutti i Dati Locali</button>
+                         <p class="mt-2 text-xs text-gray-500">I dati sono salvati solo in questo browser. L'esportazione/importazione permette un backup manuale.</p>
+                     </div>
+                      <div>
+                        <h3 class="text-md font-medium text-gray-800 mb-2">Condivisione</h3>
+                         <button onclick="shareApp()" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Condividi Link App (Simulato)
+                        </button>
+                     </div>
+                      <div>
+                        <h3 class="text-md font-medium text-gray-800 mb-2">Informazioni</h3>
+                         <p class="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg border border-gray-200">Versione PWA: 0.2.0</p>
+                     </div>
+                 </div>
+                 <div id="settings-message-box" class="hidden mt-4 p-3 bg-indigo-100 border border-indigo-300 text-indigo-800 rounded-lg text-sm">
+                    Azione completata.
+                </div>
+            </div>
+
+        </main>
+
+        <nav class="bottom-nav bg-gray-50 border-t border-gray-200 grid grid-cols-5 gap-1 p-1">
+             <button data-target="screen-home" class="nav-button flex flex-col items-center text-gray-600 hover:text-green-600 p-2 rounded-md">
+                <span class="text-xl">🏠</span> <span class="text-xs">Home</span>
+            </button>
+            <button data-target="screen-calendario" class="nav-button flex flex-col items-center text-gray-600 hover:text-green-600 p-2 rounded-md">
+                 <span class="text-xl">📅</span> <span class="text-xs">Calendario</span>
+            </button>
+             <button data-target="screen-aggiungi" class="nav-button flex flex-col items-center text-gray-600 hover:text-green-600 p-2 rounded-md">
+                 <span class="text-xl">➕</span> <span class="text-xs">Aggiungi</span>
+            </button>
+             <button data-target="screen-piante" data-section="Orto" class="nav-button flex flex-col items-center text-gray-600 hover:text-green-600 p-2 rounded-md">
+                 <span class="text-xl">🥕</span> <span class="text-xs">Orto</span>
+            </button>
+             <button data-target="screen-impostazioni" class="nav-button flex flex-col items-center text-gray-600 hover:text-green-600 p-2 rounded-md">
+                 <span class="text-xl">⚙️</span> <span class="text-xs">Impostazioni</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <script>
+        // --- Global State ---
+        let currentScreen = 'screen-home';
+        let currentPlantSection = 'Orto'; // Default section for plants screen
+        let currentCalendarDate = new Date(); // For calendar navigation
+
+        // --- Data Storage (localStorage) ---
+        const STORAGE_KEYS = {
+            PLANTS: 'ortoFruttetoPWA_plants',
+            ACTIVITIES: 'ortoFruttetoPWA_activities'
+        };
+
+        // Load data from localStorage or initialize empty
+        let plants = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLANTS)) || { Orto: [], Frutteto: [] };
+        let activities = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES)) || [];
+
+        // Function to save data to localStorage
+        function saveData(key, data) {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (e) {
+                console.error("Error saving to localStorage:", e);
+                showErrorMessage("Errore nel salvataggio dei dati. Spazio esaurito?");
+            }
+        }
+
+        // --- Navigation ---
+        function navigateTo(screenId, plantSection = null) {
+            // Hide current screen
+            const oldScreen = document.getElementById(currentScreen);
+            if (oldScreen) {
+                oldScreen.classList.remove('visible');
+                 setTimeout(() => {
+                     if (!oldScreen.classList.contains('visible')) {
+                        oldScreen.classList.add('hidden');
+                     }
+                }, 300);
+            }
+
+            // Show new screen
+            const newScreen = document.getElementById(screenId);
+            if (newScreen) {
+                newScreen.classList.remove('hidden');
+                void newScreen.offsetWidth; // Reflow
+                newScreen.classList.add('visible');
+                currentScreen = screenId;
+            } else {
+                console.error("Screen not found:", screenId);
+                 navigateTo('screen-home'); // Fallback
+                 return;
+            }
+
+             // Update active button style in nav bar
+             document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.remove('active');
+                // Handle plant section button slightly differently
+                const targetScreen = btn.dataset.target;
+                const targetSection = btn.dataset.section;
+                 if (targetScreen === screenId && (!targetSection || targetSection === plantSection)) {
+                     btn.classList.add('active');
+                 } else if (targetScreen === 'screen-piante' && screenId === 'screen-piante' && targetSection === currentPlantSection) {
+                     // Special case for Orto/Frutteto button when navigating directly to plants
+                      btn.classList.add('active');
+                 }
+             });
+
+
+            // Screen specific updates
+            if (screenId === 'screen-piante') {
+                currentPlantSection = plantSection || currentPlantSection; // Keep current if null
+                document.getElementById('plant-section-title').textContent = currentPlantSection;
+                document.getElementById('new-plant-name').placeholder = `Nome nuova pianta (${currentPlantSection})`;
+                updatePlantList(); // Update list for the current section
+            } else if (screenId === 'screen-calendario') {
+                generateCalendar();
+            } else if (screenId === 'screen-aggiungi') {
+                 // Set default date to today
+                 document.getElementById('activity-date').valueAsDate = new Date();
+                 updatePlantDropdown(); // Ensure dropdown is current
+            } else if (screenId === 'screen-home') {
+                updateRecentActivities();
+            }
+
+            // Reset message boxes
+            hideMessageBox('save-message-box');
+            hideMessageBox('calendar-message-box');
+            hideMessageBox('settings-message-box');
+            hideMessageBox('error-message-box');
+        }
+
+        // --- Calendar ---
+         function changeMonth(delta) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+            generateCalendar();
+        }
+
+        function generateCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const monthYearDisplay = document.getElementById('calendar-month-year');
+            grid.innerHTML = '';
+
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+
+            const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+            monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
+
+            const firstDayOfMonth = new Date(year, month, 1);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let startingDay = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon
+            if (startingDay === 0) startingDay = 6; else startingDay -= 1; // Adjust to Mon=0
+
+            // Get activities for the current month view
+             const monthActivities = activities.filter(act => {
+                 const actDate = new Date(act.date);
+                 return actDate.getFullYear() === year && actDate.getMonth() === month;
+             });
+
+            // Blanks before 1st
+            for (let i = 0; i < startingDay; i++) {
+                grid.insertAdjacentHTML('beforeend', '<div class="p-2 border border-gray-200 bg-gray-50"></div>');
+            }
+
+            // Days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.classList.add('calendar-day', 'p-2', 'border', 'border-gray-300', 'bg-white', 'hover:bg-gray-100', 'cursor-pointer', 'text-sm', 'text-gray-700', 'relative');
+                dayCell.textContent = day;
+
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                dayCell.dataset.date = dateString;
+                dayCell.onclick = () => showActivitiesForDay(dateString);
+
+                // Find activities for this specific day
+                const dayActivities = monthActivities.filter(act => act.date === dateString);
+
+                 if (dayActivities.length > 0) {
+                     const indicatorContainer = document.createElement('div');
+                     indicatorContainer.classList.add('activity-indicator');
+                     // Create unique indicators based on activity type and section
+                     const indicators = {};
+                     dayActivities.forEach(act => {
+                         const typeClass = `bg-${act.type.toLowerCase().split(' ')[0].replace('à', 'a')}`; // e.g., bg-semina
+                         indicators[typeClass] = typeClass;
+                         if (act.plantId) {
+                             const plant = findPlantById(act.plantId);
+                              if (plant) {
+                                 const sectionClass = plant.section === 'Orto' ? 'bg-orto' : 'bg-frutteto';
+                                 indicators[sectionClass] = sectionClass;
+                             }
+                         }
+                     });
+
+                     Object.values(indicators).forEach(cssClass => {
+                         const dot = document.createElement('span');
+                         dot.classList.add('indicator-dot', cssClass);
+                         // Add title for hover (optional)
+                         // dot.title = cssClass.replace('bg-', '');
+                         indicatorContainer.appendChild(dot);
+                     });
+                     dayCell.appendChild(indicatorContainer);
+                 }
+                grid.appendChild(dayCell);
+            }
+
+             // Blanks after last day
+             const totalCells = startingDay + daysInMonth;
+             const remainingCells = (7 - (totalCells % 7)) % 7;
+              for (let i = 0; i < remainingCells; i++) {
+                 grid.insertAdjacentHTML('beforeend', '<div class="p-2 border border-gray-200 bg-gray-50"></div>');
+            }
+        }
+
+        function showActivitiesForDay(dateString) {
+             const dayActivities = activities.filter(act => act.date === dateString);
+             const listElement = document.getElementById('calendar-day-activities');
+             const msgBox = document.getElementById('calendar-message-box');
+             const title = msgBox.querySelector('h4');
+
+             const dateObj = new Date(dateString + 'T00:00:00'); // Ensure correct date parsing
+             const formattedDate = dateObj.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+             title.textContent = `Attività del ${formattedDate}:`;
+
+
+             if (dayActivities.length > 0) {
+                 listElement.innerHTML = ''; // Clear previous
+                 dayActivities.sort((a, b) => a.type.localeCompare(b.type)).forEach(act => {
+                     const li = document.createElement('li');
+                     let plantName = '';
+                     if (act.plantId) {
+                         const plant = findPlantById(act.plantId);
+                         plantName = plant ? ` (${plant.name})` : ' (Pianta non trovata)';
+                     }
+                     li.textContent = `${act.type}${plantName}: ${act.notes || 'Nessuna nota'}`;
+                     listElement.appendChild(li);
+                 });
+             } else {
+                  listElement.innerHTML = '<li>Nessuna attività registrata per questo giorno.</li>';
+             }
+             showMessageBox('calendar-message-box');
+        }
+
+        // --- Add Activity ---
+        function saveActivity() {
+            const form = document.getElementById('activity-form');
+            const date = form['activity-date'].value;
+            const type = form['activity-type'].value;
+            const plantId = form['plant-association'].value;
+            const notes = form['activity-notes'].value.trim();
+
+            if (!date || !type) {
+                showErrorMessage("Data e Tipo Attività sono obbligatori.");
+                return;
+            }
+
+            const newActivity = {
+                id: 'act-' + Date.now(), // Simple unique ID
+                date: date,
+                type: type,
+                plantId: plantId || null, // Store null if no plant selected
+                notes: notes
+            };
+
+            activities.push(newActivity);
+            saveData(STORAGE_KEYS.ACTIVITIES, activities);
+
+            console.log("Activity saved:", newActivity);
+            form.reset(); // Reset form fields
+             document.getElementById('activity-date').valueAsDate = new Date(); // Reset date to today
+
+            showMessageBox('save-message-box');
+            setTimeout(() => hideMessageBox('save-message-box'), 2000);
+
+            // Optionally navigate away or update other views
+            generateCalendar(); // Update calendar view if visible
+            updateRecentActivities(); // Update home screen list
+        }
+
+         // --- Plant Management ---
+        function findPlantById(plantId) {
+            return plants.Orto.find(p => p.id === plantId) || plants.Frutteto.find(p => p.id === plantId);
+        }
+
+        function updatePlantList() {
+            const listElement = document.getElementById('plant-list');
+            listElement.innerHTML = ''; // Clear existing list
+
+            const sectionPlants = plants[currentPlantSection] || [];
+
+            if (sectionPlants.length === 0) {
+                 listElement.innerHTML = '<li class="text-gray-500 text-sm p-3">Nessuna pianta aggiunta in questa sezione.</li>';
+                 return;
+            }
+
+            sectionPlants.sort((a, b) => a.name.localeCompare(b.name)).forEach(plant => {
+                const li = document.createElement('li');
+                li.classList.add('bg-white', 'p-3', 'rounded-lg', 'shadow', 'border', 'border-gray-200', 'flex', 'justify-between', 'items-center');
+                li.dataset.plantId = plant.id;
+
+                const span = document.createElement('span');
+                span.textContent = plant.name;
+                li.appendChild(span);
+
+                const button = document.createElement('button');
+                button.classList.add('text-red-500', 'hover:text-red-700', 'text-xs', 'font-medium', 'p-1', 'rounded', 'hover:bg-red-100');
+                button.textContent = 'Elimina';
+                button.onclick = () => deletePlant(plant.id);
+                li.appendChild(button);
+
+                listElement.appendChild(li);
+            });
+        }
+
+        function updatePlantDropdown() {
+            const selectOrto = document.getElementById('plant-group-orto');
+            const selectFrutteto = document.getElementById('plant-group-frutteto');
+            selectOrto.innerHTML = '';
+            selectFrutteto.innerHTML = '';
+
+            plants.Orto.sort((a, b) => a.name.localeCompare(b.name)).forEach(plant => {
+                selectOrto.insertAdjacentHTML('beforeend', `<option value="${plant.id}">${plant.name}</option>`);
+            });
+
+             plants.Frutteto.sort((a, b) => a.name.localeCompare(b.name)).forEach(plant => {
+                selectFrutteto.insertAdjacentHTML('beforeend', `<option value="${plant.id}">${plant.name}</option>`);
+            });
+        }
+
+        function addPlant() {
+            const input = document.getElementById('new-plant-name');
+            const name = input.value.trim();
+            if (!name) return;
+
+            const newPlant = {
+                id: 'plant-' + Date.now(), // Simple unique ID
+                name: name,
+                section: currentPlantSection // Store which section it belongs to
+            };
+
+            plants[currentPlantSection].push(newPlant);
+            saveData(STORAGE_KEYS.PLANTS, plants); // Save updated plants
+
+            console.log(`Plant "${name}" added to ${currentPlantSection}`);
+            input.value = '';
+            updatePlantList();
+            updatePlantDropdown();
+        }
+
+         function deletePlant(plantId) {
+            if (!plantId) return;
+
+             if (!confirm("Sei sicuro di voler eliminare questa pianta? Verranno mantenute le attività associate, ma non saranno più collegate a questa pianta.")) {
+                 return;
+             }
+
+            console.log("Deleting plant with ID:", plantId);
+
+            let found = false;
+            plants.Orto = plants.Orto.filter(p => {
+                 if (p.id === plantId) found = true;
+                 return p.id !== plantId;
+             });
+            if (!found) {
+                 plants.Frutteto = plants.Frutteto.filter(p => p.id !== plantId);
+            }
+
+             // Remove association from activities (optional, or handle display)
+             activities.forEach(act => {
+                 if (act.plantId === plantId) {
+                     act.plantId = null; // Or some indicator like 'deleted-plant'
+                 }
+             });
+
+            saveData(STORAGE_KEYS.PLANTS, plants);
+            saveData(STORAGE_KEYS.ACTIVITIES, activities); // Save activities if associations were changed
+
+            updatePlantList();
+            updatePlantDropdown();
+            generateCalendar(); // Update calendar if activity links changed
+            updateRecentActivities(); // Update home screen
+        }
+
+        // --- Home Screen ---
+        function updateRecentActivities() {
+            const listElement = document.getElementById('recent-activities-list');
+            listElement.innerHTML = ''; // Clear list
+
+            const recentActs = activities
+                .sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort descending by date
+                .slice(0, 5); // Get latest 5
+
+            if (recentActs.length === 0) {
+                listElement.innerHTML = '<li>Nessuna attività recente trovata.</li>';
+                return;
+            }
+
+            recentActs.forEach(act => {
+                const li = document.createElement('li');
+                const dateObj = new Date(act.date + 'T00:00:00');
+                const formattedDate = dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                 let plantName = '';
+                 if (act.plantId) {
+                     const plant = findPlantById(act.plantId);
+                     plantName = plant ? ` (${plant.name})` : '';
+                 }
+                li.textContent = `[${formattedDate}] ${act.type}${plantName}`;
+                listElement.appendChild(li);
+            });
+        }
+
+
+        // --- Settings ---
+         function shareApp() {
+             if (navigator.share) {
+                 navigator.share({
+                     title: 'Orto e Frutteto PWA',
+                     text: 'Gestisci il tuo orto e frutteto con questa PWA!',
+                     url: window.location.href // Share current URL
+                 }).then(() => console.log('Successful share'))
+                   .catch((error) => console.log('Error sharing', error));
+             } else {
+                 console.log("Web Share API not supported.");
+                 showSettingsMessage("La condivisione Web non è supportata su questo browser/dispositivo. Puoi copiare l'URL dalla barra degli indirizzi.");
+                 setTimeout(() => hideMessageBox('settings-message-box'), 4000);
+             }
+         }
+
+         function exportData() {
+             const dataToExport = {
+                 plants: plants,
+                 activities: activities
+             };
+             const dataStr = JSON.stringify(dataToExport, null, 2); // Pretty print JSON
+             const dataBlob = new Blob([dataStr], { type: 'application/json' });
+             const url = URL.createObjectURL(dataBlob);
+             const link = document.createElement('a');
+             link.href = url;
+             const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+             link.download = `orto_frutteto_backup_${timestamp}.json`;
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+             URL.revokeObjectURL(url);
+             showSettingsMessage("Dati esportati come file JSON.");
+              setTimeout(() => hideMessageBox('settings-message-box'), 3000);
+         }
+
+         function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData.plants && importedData.activities) {
+                         if (confirm("Sei sicuro di voler importare questi dati? Sovrascriveranno tutti i dati attuali!")) {
+                            plants = importedData.plants;
+                            activities = importedData.activities;
+                            saveData(STORAGE_KEYS.PLANTS, plants);
+                            saveData(STORAGE_KEYS.ACTIVITIES, activities);
+                            // Refresh all views
+                            updatePlantList();
+                            updatePlantDropdown();
+                            generateCalendar();
+                            updateRecentActivities();
+                             navigateTo('screen-home'); // Go home after import
+                             showSettingsMessage("Dati importati con successo!");
+                         }
+                    } else {
+                        showErrorMessage("Formato file non valido.");
+                    }
+                } catch (error) {
+                    console.error("Error parsing import file:", error);
+                    showErrorMessage("Errore durante l'importazione del file.");
+                } finally {
+                     // Reset file input to allow importing the same file again if needed
+                     event.target.value = null;
+                      setTimeout(() => hideMessageBox('settings-message-box'), 3000);
+                      setTimeout(() => hideMessageBox('error-message-box'), 3000);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+         function clearAllData() {
+              if (confirm("ATTENZIONE! Sei assolutamente sicuro di voler cancellare TUTTI i dati (piante e attività)? Questa azione è irreversibile!")) {
+                  localStorage.removeItem(STORAGE_KEYS.PLANTS);
+                  localStorage.removeItem(STORAGE_KEYS.ACTIVITIES);
+                  plants = { Orto: [], Frutteto: [] }; // Reset in-memory data
+                  activities = [];
+                   // Refresh all views
+                   updatePlantList();
+                   updatePlantDropdown();
+                   generateCalendar();
+                   updateRecentActivities();
+                   navigateTo('screen-home'); // Go home after clearing
+                   showSettingsMessage("Tutti i dati locali sono stati cancellati.");
+                   setTimeout(() => hideMessageBox('settings-message-box'), 3000);
+              }
+         }
+
+
+        // --- Utility ---
+         function showMessageBox(boxId) {
+             const box = document.getElementById(boxId);
+             if (box) box.classList.remove('hidden');
+         }
+         function hideMessageBox(boxId) {
+              const box = document.getElementById(boxId);
+             if (box) box.classList.add('hidden');
+         }
+          function showSettingsMessage(message) {
+             const box = document.getElementById('settings-message-box');
+             if(box) {
+                 box.textContent = message;
+                 showMessageBox('settings-message-box');
+             }
+         }
+         function showErrorMessage(message) {
+             const box = document.getElementById('error-message-box');
+             if(box) {
+                 box.textContent = message;
+                 showMessageBox('error-message-box');
+                  // Hide error after a while
+                 setTimeout(() => hideMessageBox('error-message-box'), 4000);
+             }
+         }
+
+        // --- PWA Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js') // Assumes sw.js is in the root directory
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+             // Add navigation listeners
+            document.querySelectorAll('.nav-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetScreen = button.dataset.target;
+                    const targetSection = button.dataset.section; // Will be 'Orto' or undefined
+                    navigateTo(targetScreen, targetSection);
+                });
+            });
+
+            navigateTo('screen-home'); // Start on home screen
+            updatePlantDropdown(); // Initial dropdown population needed for 'Add' screen
+            updateRecentActivities(); // Populate home screen list
+        });
+
+    </script>
+
+</body>
+</html>
+
+```json
+{
+  "name": "Orto e Frutteto PWA",
+  "short_name": "OrtoApp",
+  "description": "Applicazione PWA per la gestione di orto e frutteto.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#22c55e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "[https://placehold.co/192x192/22c55e/ffffff?text=Orto](https://placehold.co/192x192/22c55e/ffffff?text=Orto)",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "[https://placehold.co/512x512/22c55e/ffffff?text=OrtoApp](https://placehold.co/512x512/22c55e/ffffff?text=OrtoApp)",
+      "sizes": "512x512",
+      "type": "image/png",
+       "purpose": "any maskable"
+    }
+  ]
+}
+```javascript
+// FILE: sw.js (Service Worker)
+
+const CACHE_NAME = 'orto-frutteto-pwa-cache-v1';
+// List of files to cache immediately during install
+const urlsToCache = [
+  '/', // Cache the root URL
+  '/index.html', // Cache the main HTML file
+  'https://cdn.tailwindcss.com', // Cache Tailwind CSS (consider self-hosting or versioning)
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap', // Cache font CSS
+  // Add other essential assets like specific font files if preloaded, icons, manifest.json
+  '/manifest.json'
+  // '/style.css', // If you have a separate CSS file
+  // '/script.js' // If you have a separate JS file
+];
+
+// Install event: Cache core assets
+self.addEventListener('install', event => {
+  console.log('Service Worker: Installing...');
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('Service Worker: Caching app shell');
+        // Use addAll for atomic caching - fails if any request fails
+        return cache.addAll(urlsToCache);
+      })
+      .then(() => {
+        console.log('Service Worker: App shell cached successfully');
+        // Force the waiting service worker to become the active service worker.
+        return self.skipWaiting();
+      })
+      .catch(error => {
+          console.error('Service Worker: Caching failed', error);
+      })
+  );
+});
+
+// Activate event: Clean up old caches
+self.addEventListener('activate', event => {
+  console.log('Service Worker: Activating...');
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cache => {
+          if (cache !== CACHE_NAME) {
+            console.log('Service Worker: Clearing old cache:', cache);
+            return caches.delete(cache);
+          }
+        })
+      );
+    }).then(() => {
+        console.log('Service Worker: Claiming clients');
+        // Take control of all open clients (tabs) immediately
+        return self.clients.claim();
+    })
+  );
+});
+
+// Fetch event: Serve cached content when offline (Cache-first strategy)
+self.addEventListener('fetch', event => {
+    // Let the browser handle requests for non-GET methods
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    // For navigation requests (HTML pages), try network first, then cache.
+    // This ensures users get the latest HTML if online.
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .catch(() => {
+                    // If network fails, serve the main index.html from cache
+                    return caches.match('/index.html');
+                })
+        );
+        return;
+    }
+
+    // For other requests (CSS, JS, images, fonts), use Cache-first strategy
+    event.respondWith(
+        caches.match(event.request)
+            .then(cachedResponse => {
+                // Cache hit - return response
+                if (cachedResponse) {
+                    // console.log('Service Worker: Serving from cache:', event.request.url);
+                    return cachedResponse;
+                }
+
+                // Not in cache - fetch from network
+                // console.log('Service Worker: Fetching from network:', event.request.url);
+                return fetch(event.request).then(
+                    networkResponse => {
+                        // Check if we received a valid response
+                        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors') {
+                             // Don't cache opaque responses (like from CDNs without CORS) unless necessary
+                            return networkResponse;
+                        }
+
+                        // IMPORTANT: Clone the response. A response is a stream
+                        // and because we want the browser to consume the response
+                        // as well as the cache consuming the response, we need
+                        // to clone it so we have two streams.
+                        const responseToCache = networkResponse.clone();
+
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                // console.log('Service Worker: Caching new resource:', event.request.url);
+                                cache.put(event.request, responseToCache);
+                            });
+
+                        return networkResponse;
+                    }
+                ).catch(error => {
+                    console.error('Service Worker: Fetch failed; returning offline page instead.', error);
+                    // Optional: Return a custom offline fallback page or image
+                    // if (!event.request.url.includes('.html')) { // Don't return offline page for assets
+                    //     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+                    // }
+                    // return caches.match('/offline.html'); // You would need to cache an offline.html page
+                });
+            })
+    );
+});
+
